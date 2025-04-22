@@ -1,214 +1,218 @@
 #!/bin/bash
 
-# Скрипт для установки всех необходимых зависимостей
+# Скрипт для установки всех необходимых зависимостей из исходных кодов без использования пакетных менеджеров
 
 echo "Установка зависимостей для Nibbler..."
 
-# Проверка наличия пакетного менеджера
-if command -v apt &> /dev/null; then
-    PACKAGE_MANAGER="apt"
-elif command -v apt-get &> /dev/null; then
-    PACKAGE_MANAGER="apt-get"
-elif command -v dnf &> /dev/null; then
-    PACKAGE_MANAGER="dnf"
-elif command -v yum &> /dev/null; then
-    PACKAGE_MANAGER="yum"
-elif command -v pacman &> /dev/null; then
-    PACKAGE_MANAGER="pacman"
-elif command -v brew &> /dev/null; then
-    PACKAGE_MANAGER="brew"
-else
-    echo "Не найден поддерживаемый пакетный менеджер. Пожалуйста, установите зависимости вручную."
-    exit 1
-fi
+# Устанавливаем директории для установки
+INSTALL_DIR="$HOME/.local"
+BUILD_DIR="$HOME/build_libs"
 
-echo "Используем пакетный менеджер: $PACKAGE_MANAGER"
+# Создаем директории, если они не существуют
+mkdir -p "$INSTALL_DIR/lib"
+mkdir -p "$INSTALL_DIR/include"
+mkdir -p "$INSTALL_DIR/bin"
+mkdir -p "$BUILD_DIR"
 
-# Функция для установки пакетов в зависимости от пакетного менеджера
-install_packages() {
-    echo "Установка пакетов: $@"
-    case $PACKAGE_MANAGER in
-        apt|apt-get)
-            $PACKAGE_MANAGER install -y "$@"
-            ;;
-        dnf|yum)
-            $PACKAGE_MANAGER install -y "$@"
-            ;;
-        pacman)
-            $PACKAGE_MANAGER -S --noconfirm "$@"
-            ;;
-        brew)
-            $PACKAGE_MANAGER install "$@"
-            ;;
-    esac
+# Добавляем директории в PATH, LD_LIBRARY_PATH и PKG_CONFIG_PATH
+export PATH="$INSTALL_DIR/bin:$PATH"
+export LD_LIBRARY_PATH="$INSTALL_DIR/lib:$LD_LIBRARY_PATH"
+export PKG_CONFIG_PATH="$INSTALL_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
+export CPATH="$INSTALL_DIR/include:$CPATH"
+export LIBRARY_PATH="$INSTALL_DIR/lib:$LIBRARY_PATH"
+
+# Проверяем наличие необходимых инструментов
+check_tool() {
+    if ! command -v "$1" &> /dev/null; then
+        echo "ОШИБКА: $1 не установлен. Пожалуйста, установите его вручную."
+        exit 1
+    fi
 }
 
-# Обновление репозиториев
-case $PACKAGE_MANAGER in
-    apt|apt-get)
-        $PACKAGE_MANAGER update
-        ;;
-    dnf|yum)
-        $PACKAGE_MANAGER check-update
-        ;;
-    pacman)
-        $PACKAGE_MANAGER -Sy
-        ;;
-    brew)
-        $PACKAGE_MANAGER update
-        ;;
-esac
+# Проверяем необходимые инструменты
+check_tool gcc
+check_tool g++
+check_tool make
+check_tool cmake
+check_tool git
+check_tool wget
 
-# Установка общих зависимостей для разработки
-echo "Установка основных инструментов разработки..."
-case $PACKAGE_MANAGER in
-    apt|apt-get)
-        install_packages build-essential cmake
-        ;;
-    dnf|yum)
-        install_packages gcc-c++ cmake
-        ;;
-    pacman)
-        install_packages base-devel cmake
-        ;;
-    brew)
-        install_packages cmake
-        ;;
-esac
+echo "Все необходимые инструменты установлены. Продолжаем установку библиотек..."
 
-# Установка зависимостей для SDL2
-echo "Установка SDL2..."
-case $PACKAGE_MANAGER in
-    apt|apt-get)
-        install_packages libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev
-        ;;
-    dnf|yum)
-        install_packages SDL2-devel SDL2_image-devel SDL2_ttf-devel
-        ;;
-    pacman)
-        install_packages sdl2 sdl2_image sdl2_ttf
-        ;;
-    brew)
-        install_packages sdl2 sdl2_image sdl2_ttf
-        ;;
-esac
+# Функция для компиляции и установки SDL2
+install_sdl2() {
+    echo "Установка SDL2 из исходников..."
+    cd "$BUILD_DIR"
+    if [ ! -d "SDL2" ]; then
+        # Скачиваем исходники SDL2
+        wget https://www.libsdl.org/release/SDL2-2.0.22.tar.gz
+        tar -xzf SDL2-2.0.22.tar.gz
+        mv SDL2-2.0.22 SDL2
+        cd SDL2
+        
+        # Конфигурируем и компилируем
+        ./configure --prefix="$INSTALL_DIR"
+        make -j$(nproc)
+        make install
+        echo "SDL2 установлен в $INSTALL_DIR"
+    else
+        echo "SDL2 уже установлен."
+    fi
+}
 
-# Установка зависимостей для Raylib
-echo "Установка зависимостей для Raylib..."
-case $PACKAGE_MANAGER in
-    apt|apt-get)
-        install_packages libasound2-dev libx11-dev libxrandr-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev libxcursor-dev libxinerama-dev
-        ;;
-    dnf|yum)
-        install_packages alsa-lib-devel libX11-devel libXrandr-devel libXi-devel mesa-libGL-devel mesa-libGLU-devel libXcursor-devel libXinerama-devel
-        ;;
-    pacman)
-        install_packages alsa-lib libx11 libxrandr libxi mesa glu libxcursor libxinerama
-        ;;
-    brew)
-        install_packages alsa-lib libx11 libxrandr libxi mesa glu
-        ;;
-esac
+# Функция для компиляции и установки SDL2_image
+install_sdl2_image() {
+    echo "Установка SDL2_image из исходников..."
+    cd "$BUILD_DIR"
+    if [ ! -d "SDL2_image" ]; then
+        # Скачиваем исходники SDL2_image
+        wget https://www.libsdl.org/projects/SDL_image/release/SDL2_image-2.0.5.tar.gz
+        tar -xzf SDL2_image-2.0.5.tar.gz
+        mv SDL2_image-2.0.5 SDL2_image
+        cd SDL2_image
+        
+        # Конфигурируем и компилируем
+        ./configure --prefix="$INSTALL_DIR"
+        make -j$(nproc)
+        make install
+        echo "SDL2_image установлен в $INSTALL_DIR"
+    else
+        echo "SDL2_image уже установлен."
+    fi
+}
 
-# Проверка наличия Raylib в системе
-RAYLIB_INSTALLED=false
-case $PACKAGE_MANAGER in
-    apt|apt-get)
-        if dpkg -l | grep -q "libraylib"; then
-            RAYLIB_INSTALLED=true
-        elif apt-cache search libraylib | grep -q "libraylib"; then
-            echo "Устанавливаем Raylib из репозитория..."
-            install_packages libraylib-dev
-            RAYLIB_INSTALLED=true
-        fi
-        ;;
-    dnf|yum)
-        if $PACKAGE_MANAGER list installed | grep -q "raylib"; then
-            RAYLIB_INSTALLED=true
-        elif $PACKAGE_MANAGER search raylib | grep -q "raylib"; then
-            echo "Устанавливаем Raylib из репозитория..."
-            install_packages raylib-devel
-            RAYLIB_INSTALLED=true
-        fi
-        ;;
-    pacman)
-        if pacman -Q raylib &> /dev/null; then
-            RAYLIB_INSTALLED=true
-        elif pacman -Ss raylib | grep -q "raylib"; then
-            echo "Устанавливаем Raylib из репозитория..."
-            install_packages raylib
-            RAYLIB_INSTALLED=true
-        fi
-        ;;
-    brew)
-        if brew list | grep -q "raylib"; then
-            RAYLIB_INSTALLED=true
-        else
-            echo "Устанавливаем Raylib из репозитория Homebrew..."
-            install_packages raylib
-            RAYLIB_INSTALLED=true
-        fi
-        ;;
-esac
+# Функция для компиляции и установки SDL2_ttf
+install_sdl2_ttf() {
+    echo "Установка SDL2_ttf из исходников..."
+    cd "$BUILD_DIR"
+    if [ ! -d "SDL2_ttf" ]; then
+        # Скачиваем исходники SDL2_ttf
+        wget https://www.libsdl.org/projects/SDL_ttf/release/SDL2_ttf-2.0.18.tar.gz
+        tar -xzf SDL2_ttf-2.0.18.tar.gz
+        mv SDL2_ttf-2.0.18 SDL2_ttf
+        cd SDL2_ttf
+        
+        # Конфигурируем и компилируем
+        ./configure --prefix="$INSTALL_DIR"
+        make -j$(nproc)
+        make install
+        echo "SDL2_ttf установлен в $INSTALL_DIR"
+    else
+        echo "SDL2_ttf уже установлен."
+    fi
+}
 
-# Компиляция Raylib из исходников, если не удалось установить из репозитория
-if [ "$RAYLIB_INSTALLED" = false ]; then
-    echo "Установка Raylib из исходных кодов..."
-    # Создание временного каталога для установки
-    INSTALL_DIR="$HOME/.local"
-    mkdir -p "$INSTALL_DIR"
-    
-    # Клонирование Raylib
-    if [ ! -d "/tmp/raylib" ]; then
-        git clone https://github.com/raysan5/raylib.git /tmp/raylib
-        cd /tmp/raylib/src
+# Функция для компиляции и установки Raylib
+install_raylib() {
+    echo "Установка Raylib из исходников..."
+    cd "$BUILD_DIR"
+    if [ ! -d "raylib" ]; then
+        # Клонируем репозиторий Raylib
+        git clone https://github.com/raysan5/raylib.git
+        cd raylib/src
+        
+        # Компилируем Raylib
         make PLATFORM=PLATFORM_DESKTOP PREFIX="$INSTALL_DIR"
         make install PREFIX="$INSTALL_DIR"
-        
-        # Добавление пути к библиотекам в LD_LIBRARY_PATH
-        echo "export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:$INSTALL_DIR/lib" >> "$HOME/.bashrc"
-        echo "export PKG_CONFIG_PATH=\$PKG_CONFIG_PATH:$INSTALL_DIR/lib/pkgconfig" >> "$HOME/.bashrc"
-        
-        echo "Raylib установлен в $INSTALL_DIR. Пожалуйста, перезапустите терминал или выполните:"
-        echo "source ~/.bashrc"
+        echo "Raylib установлен в $INSTALL_DIR"
+    else
+        echo "Raylib уже установлен."
     fi
-fi
+}
 
-# Установка зависимостей для SFML
-echo "Установка SFML..."
-case $PACKAGE_MANAGER in
-    apt|apt-get)
-        install_packages libsfml-dev
-        ;;
-    dnf|yum)
-        install_packages SFML-devel
-        ;;
-    pacman)
-        install_packages sfml
-        ;;
-    brew)
-        install_packages sfml
-        ;;
-esac
+# Функция для компиляции и установки SFML
+install_sfml() {
+    echo "Установка SFML из исходников..."
+    cd "$BUILD_DIR"
+    if [ ! -d "SFML" ]; then
+        # Клонируем репозиторий SFML
+        git clone https://github.com/SFML/SFML.git
+        cd SFML
+        
+        # Создаем директорию для сборки
+        mkdir -p build
+        cd build
+        
+        # Компилируем SFML
+        cmake -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" ..
+        make -j$(nproc)
+        make install
+        echo "SFML установлен в $INSTALL_DIR"
+    else
+        echo "SFML уже установлен."
+    fi
+}
 
-# Проверка наличия шрифта DejaVuSans
-if [ ! -f "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf" ]; then
+# Установка шрифтов DejaVu
+install_dejavu_fonts() {
     echo "Установка шрифтов DejaVu..."
-    case $PACKAGE_MANAGER in
-        apt|apt-get)
-            install_packages fonts-dejavu
-            ;;
-        dnf|yum)
-            install_packages dejavu-sans-fonts
-            ;;
-        pacman)
-            install_packages ttf-dejavu
-            ;;
-        brew)
-            install_packages font-dejavu
-            ;;
-    esac
+    cd "$BUILD_DIR"
+    if [ ! -d "dejavu-fonts" ]; then
+        # Создаем директорию для шрифтов
+        mkdir -p "$INSTALL_DIR/share/fonts/truetype/dejavu"
+        
+        # Скачиваем и распаковываем шрифты
+        wget https://sourceforge.net/projects/dejavu/files/dejavu/2.37/dejavu-fonts-ttf-2.37.tar.bz2
+        tar -xjf dejavu-fonts-ttf-2.37.tar.bz2
+        mv dejavu-fonts-ttf-2.37 dejavu-fonts
+        
+        # Копируем шрифты в директорию установки
+        cp dejavu-fonts/ttf/DejaVuSans*.ttf "$INSTALL_DIR/share/fonts/truetype/dejavu/"
+        
+        # Создаем символическую ссылку для программы
+        mkdir -p "$HOME/.fonts"
+        ln -sf "$INSTALL_DIR/share/fonts/truetype/dejavu/DejaVuSans.ttf" "$HOME/.fonts/DejaVuSans.ttf"
+        
+        # Обновляем кэш шрифтов
+        if command -v fc-cache &> /dev/null; then
+            fc-cache -f -v
+        fi
+        
+        echo "Шрифты DejaVu установлены в $INSTALL_DIR/share/fonts"
+    else
+        echo "Шрифты DejaVu уже установлены."
+    fi
+}
+
+# Запускаем установку всех компонентов
+install_sdl2
+install_sdl2_image
+install_sdl2_ttf
+install_raylib
+install_sfml
+install_dejavu_fonts
+
+# Добавляем пути в .bashrc, если они еще не добавлены
+if ! grep -q "LD_LIBRARY_PATH.*$INSTALL_DIR/lib" "$HOME/.bashrc"; then
+    echo "" >> "$HOME/.bashrc"
+    echo "# Nibbler dependencies paths" >> "$HOME/.bashrc"
+    echo "export PATH=\"$INSTALL_DIR/bin:\$PATH\"" >> "$HOME/.bashrc"
+    echo "export LD_LIBRARY_PATH=\"$INSTALL_DIR/lib:\$LD_LIBRARY_PATH\"" >> "$HOME/.bashrc"
+    echo "export PKG_CONFIG_PATH=\"$INSTALL_DIR/lib/pkgconfig:\$PKG_CONFIG_PATH\"" >> "$HOME/.bashrc"
+    echo "export CPATH=\"$INSTALL_DIR/include:\$CPATH\"" >> "$HOME/.bashrc"
+    echo "export LIBRARY_PATH=\"$INSTALL_DIR/lib:\$LIBRARY_PATH\"" >> "$HOME/.bashrc"
 fi
 
-echo "Все зависимости установлены!"
-echo "Перезапустите терминал или выполните 'source ~/.bashrc', чтобы все настройки вступили в силу." 
+# Создаем ссылки на библиотеки в рабочей директории проекта
+create_symlinks() {
+    cd "$(dirname "$0")/.."
+    
+    # SDL
+    if [ -f "$INSTALL_DIR/lib/libSDL2.so" ]; then
+        ln -sf "$INSTALL_DIR/lib/libSDL2.so" libSDL2-2.0.so.0
+    fi
+    
+    # SFML
+    if [ -f "$INSTALL_DIR/lib/libsfml-graphics.so" ]; then
+        ln -sf "$INSTALL_DIR/lib/libsfml-graphics.so" libsfml-graphics.so.2.4
+        ln -sf "$INSTALL_DIR/lib/libsfml-window.so" libsfml-window.so.2.4
+        ln -sf "$INSTALL_DIR/lib/libsfml-system.so" libsfml-system.so.2.4
+    fi
+}
+
+create_symlinks
+
+echo "Все зависимости установлены в директорию $INSTALL_DIR"
+echo "Чтобы применить изменения, выполните: source ~/.bashrc"
+echo "Или перезапустите терминал."
+echo "Путь к шрифту DejaVuSans.ttf: $INSTALL_DIR/share/fonts/truetype/dejavu/DejaVuSans.ttf" 
