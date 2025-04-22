@@ -246,6 +246,47 @@ void Game::update() {
         return;
     }
     
+    // Обновляем специфичную для режима игры логику
+    if (_gameMode == GameMode::SURVIVAL) {
+        // В режиме выживания змейка медленно уменьшается
+        static int survivialCounter = 0;
+        survivialCounter++;
+        
+        // Каждые 100 кадров (примерно 5 секунд) уменьшаем змейку на 1 сегмент
+        if (survivialCounter >= 100) {
+            survivialCounter = 0;
+            if (_snake->getBody().size() > 5) { // Не дадим змейке стать слишком короткой
+                _snake->shrink();
+            } else {
+                // Если длина змейки уже минимальная и должна уменьшаться - игра окончена
+                int score = static_cast<int>(_snake->getBody().size() - 4);
+                std::cout << "Game Over! Snake starved to death. Final score: " << score << std::endl;
+                _menu.setGameOver();
+                _state = GameState::GAME_OVER;
+                return;
+            }
+        }
+    } else if (_gameMode == GameMode::SNACK_SPRINT) {
+        // В режиме Snack Sprint скорость змейки увеличивается с ростом её длины
+        // Начальная скорость 100%, максимальная 300%
+        int snakeLength = static_cast<int>(_snake->getBody().size());
+        // Базовая скорость для Snack Sprint - 40
+        int baseSpeed = 40;
+        // Максимальная скорость - 13 (300% от базовой)
+        int minDelayValue = 13;
+        
+        // Чем длиннее змейка, тем выше скорость (меньше задержка)
+        // Каждые 3 единицы длины сверх начальных 4 увеличивают скорость
+        int newSpeed = baseSpeed - std::min(baseSpeed - minDelayValue, (snakeLength - 4) / 3);
+        
+        // Обновляем скорость, только если она изменилась
+        if (newSpeed != _speed) {
+            _speed = newSpeed;
+            _libLoader.getInstance()->setFrameDelay(_speed);
+            std::cout << "Snake Speed increased to: " << calculateSpeedPercent() << "%" << std::endl;
+        }
+    }
+    
     // Move snake
     _snake->move();
     
@@ -294,16 +335,16 @@ void Game::updateGameMode() {
     
     switch (_gameMode) {
         case GameMode::CLASSIC:
-            _speed = 50;  // Было 100, уменьшаем для более быстрого отклика
+            _speed = 50;  // Стандартная скорость
             break;
         case GameMode::DYNAMIC_SPEED:
-            _speed = 60;  // Было 120, уменьшаем для более быстрого отклика
+            _speed = 60;  // Начальная скорость чуть медленней
             break;
         case GameMode::SNACK_SPRINT:
-            _speed = 40;  // Было 80, уменьшаем для более быстрого отклика
+            _speed = 40;  // Начальная скорость для погони за убегающей едой (100%)
             break;
         case GameMode::SURVIVAL:
-            _speed = 45;  // Было 90, уменьшаем для более быстрого отклика
+            _speed = 45;  // Средняя скорость
             break;
         case GameMode::CONTINUE:
             // Не меняем скорость при продолжении игры
@@ -311,6 +352,18 @@ void Game::updateGameMode() {
     }
     
     _libLoader.getInstance()->setFrameDelay(_speed);
+}
+
+// Вспомогательный метод для расчета скорости в процентах
+int Game::calculateSpeedPercent() const {
+    if (_gameMode == GameMode::DYNAMIC_SPEED) {
+        // Для Dynamic Speed: 30ms = 100%, 60ms = 0%
+        return 100 - ((_speed - 30) * 100) / 30;
+    } else if (_gameMode == GameMode::SNACK_SPRINT) {
+        // Для Snack Sprint: 40ms = 100%, 13ms = 300%
+        return (_speed <= 40) ? 100 * 40 / _speed : 100;
+    }
+    return 100; // Для остальных режимов просто возвращаем 100%
 }
 
 void Game::render() {
@@ -368,30 +421,64 @@ void Game::render() {
         
         // Отображаем информацию о текущем режиме игры
         std::string modeText;
+        std::string modeDescription;
+        
+        // Получаем скорость в процентах
+        int speedPercent = calculateSpeedPercent();
+        
         switch (_gameMode) {
             case GameMode::CLASSIC:
                 modeText = "Classic Mode";
+                modeDescription = "Classic Snake Game";
                 break;
             case GameMode::DYNAMIC_SPEED:
                 modeText = "Dynamic Speed";
+                modeDescription = "Speed increases with each food | Speed: " + std::to_string(speedPercent) + "%";
                 break;
             case GameMode::SNACK_SPRINT:
                 modeText = "Snack Sprint";
+                modeDescription = "Food runs away from you | Speed: " + std::to_string(speedPercent) + "%";
                 break;
             case GameMode::SURVIVAL:
                 modeText = "Survival Mode";
+                modeDescription = "Snake shrinks over time, eat to survive!";
                 break;
             case GameMode::CONTINUE:
                 modeText = "Continue Game";
+                modeDescription = "Game resumed from pause";
                 break;
         }
         
         // Отображаем счёт (размер змейки - начальный размер)
-        std::string scoreText = "Score: " + std::to_string(_snake->getBody().size() - 4);
+        int score = static_cast<int>(_snake->getBody().size() - 4);
+        std::string scoreText = "Score: " + std::to_string(score);
         
         // Рисуем информацию в верхней части экрана
         lib->drawText(modeText, 10, 10, 16);
+        lib->drawText(modeDescription, _width / 2 * 10, 10, 14, true); // Центрируем описание режима
         lib->drawText(scoreText, _width * 20 - 100, 10, 16);
+        
+        // Добавляем специальную информацию для режима выживания
+        if (_gameMode == GameMode::SURVIVAL) {
+            std::string survivalWarning = "Warning: Snake will shrink every 5 seconds!";
+            lib->drawText(survivalWarning, _width / 2 * 10, _height * 20 - 30, 16, true);
+            
+            // Добавляем индикатор голода (опасность смерти)
+            if (_snake->getBody().size() <= 5) {
+                std::string criticalWarning = "CRITICAL: Eat food immediately or you will die!";
+                lib->drawText(criticalWarning, _width / 2 * 10, _height * 20 - 50, 18, true);
+            }
+        }
+        
+        // Специальная информация для режима Snack Sprint
+        if (_gameMode == GameMode::SNACK_SPRINT && speedPercent > 100) {
+            std::string sprintWarning = "Speed boost active: " + std::to_string(speedPercent) + "%!";
+            lib->drawText(sprintWarning, _width / 2 * 10, _height * 20 - 30, 16, true);
+        }
+        
+        // Подсказки по управлению
+        std::string controlsText = "Controls: Arrow Keys, ESC - Pause, 1,2,3 - Switch Graphics";
+        lib->drawText(controlsText, _width / 2 * 10, _height * 20 - 20, 12, true);
     }
 }
 

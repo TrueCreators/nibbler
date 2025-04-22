@@ -70,6 +70,9 @@ private:
     // Обновление игры в зависимости от выбранного режима
     void updateGameMode();
     
+    // Расчет скорости змейки в процентах
+    int calculateSpeedPercent() const;
+    
     bool saveGameState();     // Изменено с void на bool
     void restoreGameState();  // Новый метод для восстановления состояния
     

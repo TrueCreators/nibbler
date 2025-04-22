@@ -36,6 +36,7 @@ void Food::respawn(int width, int height, const Snake &snake) {
 void Food::respawnFarFromSnake(int width, int height, const Snake &snake) {
     const std::deque<Position>& snakeBody = snake.getBody();
     Position headPos = snake.getHead();
+    Direction snakeDirection = snake.getDirection();
     
     // Создаем вектор возможных позиций (все позиции на поле, кроме позиций змейки и стен)
     std::vector<Position> possiblePositions;
@@ -61,24 +62,63 @@ void Food::respawnFarFromSnake(int width, int height, const Snake &snake) {
         return;
     }
     
-    // Находим позицию, максимально удаленную от головы змейки
-    Position bestPos = possiblePositions[0];
-    double maxDistance = 0.0;
+    // В режиме убегающей еды мы будем учитывать не только расстояние,
+    // но и направление движения змейки, чтобы еда появлялась "впереди" и заставляла змейку двигаться
+    
+    // Находим позиции вдали от головы змейки, но предпочтительно в противоположном направлении движения
+    std::vector<std::pair<Position, double>> scoredPositions;
     
     for (const Position &pos : possiblePositions) {
         // Вычисляем расстояние от головы змейки до данной позиции
-        double distance = std::sqrt(std::pow(pos.x - headPos.x, 2) +
-                                   std::pow(pos.y - headPos.y, 2));
+        double distance = std::sqrt(std::pow(pos.x - headPos.x, 2) + std::pow(pos.y - headPos.y, 2));
         
-        // Если это расстояние больше максимального, обновляем максимум
-        if (distance > maxDistance) {
-            maxDistance = distance;
-            bestPos = pos;
+        // Вычисляем фактор направления (приоритизируем позиции в направлении, противоположном движению змейки)
+        double directionFactor = 1.0;
+        
+        // Проверяем позицию относительно направления движения змейки
+        switch (snakeDirection) {
+            case Direction::UP:
+                // Если змейка движется вверх, приоритизируем позиции внизу
+                directionFactor = (pos.y > headPos.y) ? 1.5 : 1.0;
+                break;
+            case Direction::DOWN:
+                // Если змейка движется вниз, приоритизируем позиции вверху
+                directionFactor = (pos.y < headPos.y) ? 1.5 : 1.0;
+                break;
+            case Direction::LEFT:
+                // Если змейка движется влево, приоритизируем позиции справа
+                directionFactor = (pos.x > headPos.x) ? 1.5 : 1.0;
+                break;
+            case Direction::RIGHT:
+                // Если змейка движется вправо, приоритизируем позиции слева
+                directionFactor = (pos.x < headPos.x) ? 1.5 : 1.0;
+                break;
         }
+        
+        // Учитываем близость к стенам (избегаем углов)
+        double wallFactor = 1.0;
+        if ((pos.x <= 2 || pos.x >= width - 3) && (pos.y <= 2 || pos.y >= height - 3)) {
+            wallFactor = 0.7; // Снижаем приоритет углов
+        }
+        
+        // Вычисляем итоговый счет для позиции
+        double score = distance * directionFactor * wallFactor;
+        
+        scoredPositions.push_back({pos, score});
     }
     
+    // Сортируем позиции по убыванию счета
+    std::sort(scoredPositions.begin(), scoredPositions.end(), 
+              [](const std::pair<Position, double> &a, const std::pair<Position, double> &b) {
+                  return a.second > b.second; 
+              });
+    
+    // Выбираем одну из трех лучших позиций (если есть)
+    std::uniform_int_distribution<int> dist(0, std::min(2, static_cast<int>(scoredPositions.size()) - 1));
+    int index = dist(_rng);
+    
     // Устанавливаем новую позицию еды
-    _position = bestPos;
+    _position = scoredPositions[index].first;
 }
 
 void Food::setPosition(const Position& pos) {
