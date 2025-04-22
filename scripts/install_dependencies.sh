@@ -21,23 +21,7 @@ export PKG_CONFIG_PATH="$INSTALL_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
 export CPATH="$INSTALL_DIR/include:$CPATH"
 export LIBRARY_PATH="$INSTALL_DIR/lib:$LIBRARY_PATH"
 
-# Проверяем наличие необходимых инструментов
-check_tool() {
-    if ! command -v "$1" &> /dev/null; then
-        echo "ОШИБКА: $1 не установлен. Пожалуйста, установите его вручную."
-        exit 1
-    fi
-}
-
-# Проверяем необходимые инструменты
-check_tool gcc
-check_tool g++
-check_tool make
-check_tool cmake
-check_tool git
-check_tool wget
-
-echo "Все необходимые инструменты установлены. Продолжаем установку библиотек..."
+echo "Начинаем установку библиотек..."
 
 # Функция для компиляции и установки SDL2
 install_sdl2() {
@@ -52,7 +36,7 @@ install_sdl2() {
         
         # Конфигурируем и компилируем
         ./configure --prefix="$INSTALL_DIR"
-        make -j$(nproc)
+        make -j4
         make install
         echo "SDL2 установлен в $INSTALL_DIR"
     else
@@ -73,7 +57,7 @@ install_sdl2_image() {
         
         # Конфигурируем и компилируем
         ./configure --prefix="$INSTALL_DIR"
-        make -j$(nproc)
+        make -j4
         make install
         echo "SDL2_image установлен в $INSTALL_DIR"
     else
@@ -94,7 +78,7 @@ install_sdl2_ttf() {
         
         # Конфигурируем и компилируем
         ./configure --prefix="$INSTALL_DIR"
-        make -j$(nproc)
+        make -j4
         make install
         echo "SDL2_ttf установлен в $INSTALL_DIR"
     else
@@ -135,7 +119,7 @@ install_sfml() {
         
         # Компилируем SFML
         cmake -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" ..
-        make -j$(nproc)
+        make -j4
         make install
         echo "SFML установлен в $INSTALL_DIR"
     else
@@ -163,7 +147,7 @@ install_dejavu_fonts() {
         mkdir -p "$HOME/.fonts"
         ln -sf "$INSTALL_DIR/share/fonts/truetype/dejavu/DejaVuSans.ttf" "$HOME/.fonts/DejaVuSans.ttf"
         
-        # Обновляем кэш шрифтов
+        # Обновляем кэш шрифтов если fc-cache доступен
         if command -v fc-cache &> /dev/null; then
             fc-cache -f -v
         fi
