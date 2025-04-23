@@ -333,8 +333,8 @@ compile_libs() {
 install_sdl2
 install_sdl2_image
 install_sdl2_ttf
-install_raylib
 install_sfml
+install_raylib
 install_dejavu_fonts
 update_makefiles
 compile_libs

@@ -2,9 +2,9 @@
 #define SDLGRAPHICSLIB_HPP
 
 #include "../../includes/IGraphicsLib.hpp"
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_ttf.h>
+#include "./include/SDL2/SDL.h"
+#include "./include/SDL2/SDL_image.h"
+#include "./include/SDL2/SDL_ttf.h"
 #include <map>
 
 class SDLGraphicsLib : public IGraphicsLib {

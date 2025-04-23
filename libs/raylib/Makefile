@@ -1,25 +1,31 @@
-NAME = ../../lib_nibbler_raylib.so
-CXX = g++
-CXXFLAGS = -Wall -Wextra -Werror -std=c++11 -fPIC
-INCLUDES = -I../../includes -I./include
-LIBS = -L./lib -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
-SRC = RaylibGraphicsLib.cpp
-OBJ = $(SRC:.cpp=.o)
+NAME = libraylib.so
+
+CC = g++
+CFLAGS = -Wall -Wextra -Werror -std=c++11 -fPIC
+LDFLAGS = -shared
+
+RAYLIB_PATH = ./raylib
+
+SRCS = RayLibGraphic.cpp
+
+OBJS = $(SRCS:.cpp=.o)
+
+INCLUDES = -I../../ -I$(RAYLIB_PATH)/src
+
+.PHONY: all clean fclean re
 
 all: $(NAME)
 
-$(NAME): $(OBJ)
-	$(CXX) -shared -o $(NAME) $(OBJ) $(LIBS)
+$(NAME): $(OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS) -o $(NAME) -L$(RAYLIB_PATH)/src -lraylib -lm -ldl -lpthread -lGL
 
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
-	rm -f $(OBJ)
+	rm -f $(OBJS)
 
 fclean: clean
 	rm -f $(NAME)
 
-re: fclean all
-
-.PHONY: all clean fclean re 
+re: fclean all 
