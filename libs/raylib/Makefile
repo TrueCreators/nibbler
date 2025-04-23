@@ -1,8 +1,8 @@
 NAME = ../../lib_nibbler_raylib.so
 CXX = g++
 CXXFLAGS = -Wall -Wextra -Werror -std=c++11 -fPIC
-INCLUDES = -I../../includes
-LIBS = -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+INCLUDES = -I../../includes -I./include
+LIBS = -L./lib -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
 SRC = RaylibGraphicsLib.cpp
 OBJ = $(SRC:.cpp=.o)
 

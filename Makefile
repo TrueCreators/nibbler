@@ -59,6 +59,25 @@ fclean: clean
 	$(MAKE) -C $(RAYLIB_DIR) fclean
 	$(MAKE) -C $(SFML_DIR) fclean
 
+cleanlibs:
+	@echo "Очистка библиотек и их исходников..."
+	rm -rf $(SDL_DIR)/src/*
+	rm -rf $(SDL_DIR)/lib/*
+	rm -rf $(SDL_DIR)/include/*
+	rm -rf $(RAYLIB_DIR)/src/*
+	rm -rf $(RAYLIB_DIR)/lib/*
+	rm -rf $(RAYLIB_DIR)/include/*
+	rm -rf $(SFML_DIR)/src/*
+	rm -rf $(SFML_DIR)/lib/*
+	rm -rf $(SFML_DIR)/include/*
+	rm -f $(SDL_LIB)
+	rm -f $(RAYLIB_LIB)
+	rm -f $(SFML_LIB)
+	rm -f $(BIN_PATH)/libSDL2*.so*
+	rm -f $(BIN_PATH)/libsfml*.so*
+	rm -f $(BIN_PATH)/raylib.so
+	@echo "Все библиотеки и их исходники удалены."
+
 re: fclean all
 
-.PHONY: all setup clean fclean re 
+.PHONY: all setup clean fclean cleanlibs re 

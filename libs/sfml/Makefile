@@ -1,8 +1,8 @@
 NAME = ../../lib_nibbler_sfml.so
 CXX = g++
 CXXFLAGS = -Wall -Wextra -Werror -std=c++11 -fPIC
-INCLUDES = -I../../includes
-LIBS = -lsfml-graphics -lsfml-window -lsfml-system
+INCLUDES = -I../../includes -I./include
+LIBS = -L./lib -lsfml-graphics -lsfml-window -lsfml-system
 SRC = SFMLGraphicsLib.cpp
 OBJ = $(SRC:.cpp=.o)
 
